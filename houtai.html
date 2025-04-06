@@ -1,0 +1,2711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算力质押挖矿 - 管理员后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.5.1/dist/ethers.umd.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">算力质押挖矿 - 管理员后台</h1>
+
+        <!-- 钱包连接状态 -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <h2 class="text-xl font-bold mb-4">钱包连接状态</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="mb-2"><strong>连接状态:</strong> <span id="connectionStatus" class="text-red-500">未连接</span></p>
+                    <p class="mb-2"><strong>当前账户:</strong> <span id="currentAccount">-</span></p>
+                    <p class="mb-2"><strong>当前网络:</strong> <span id="currentNetwork">-</span></p>
+                </div>
+                <div>
+                    <button id="connectButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2">连接钱包</button>
+                    <button id="disconnectButton" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mr-2">断开连接</button>
+                    <button id="diagnoseButton" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">诊断合约</button>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p class="mb-2"><strong>合约地址:</strong></p>
+                <div class="flex">
+                    <input type="text" id="contractAddress" class="border p-2 rounded flex-grow" value="0x1234567890123456789012345678901234567890">
+                    <button id="updateContractButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">更新合约</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理员管理 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">管理员管理</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">添加管理员地址</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要添加的管理员钱包地址</p>
+                    <input type="text" id="newAdminAddress" placeholder="例如: 0x..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="addAdmin()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">添加管理员</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">移除管理员地址</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要移除的管理员钱包地址</p>
+                    <input type="text" id="removeAdminAddress" placeholder="例如: 0x..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="removeAdmin()" class="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">移除管理员</button>
+                </div>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-lg font-medium mb-2">管理员列表</h3>
+                <div id="adminList" class="bg-gray-50 p-4 rounded-md overflow-auto max-h-40">
+                    <p class="text-gray-500">加载中...</p>
+                </div>
+                <button onclick="refreshAdminList()" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">刷新管理员列表</button>
+            </div>
+        </div>
+
+        <!-- 算力管理 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">算力管理</h2>
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">批量增加用户算力</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">用户地址列表</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要增加算力的用户地址，每行一个地址</p>
+                    <textarea id="userAddresses" rows="5" placeholder="例如:&#10;0x1234...&#10;0x5678..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">算力增加量</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要增加的算力数量，例如：1000</p>
+                    <input type="number" id="powerIncrease" step="1" min="0" placeholder="例如：1000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="increaseUserPower()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">批量增加算力</button>
+            
+            <div class="mt-6">
+                <p class="text-sm text-gray-600 mb-2">查询用户算力</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">用户地址</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要查询的用户地址</p>
+                    <input type="text" id="queryUserAddress" placeholder="例如: 0x..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="mt-2">
+                <p class="text-sm font-medium text-gray-700">用户算力</p>
+                <p id="userPower" class="text-lg font-semibold">-</p>
+            </div>
+            <button onclick="queryUserPower()" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">查询算力</button>
+        </div>
+
+        <!-- 系统参数设置 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">系统参数设置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">代币价格 (USDT)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：1 USDT，输入1个代币等于多少USDT</p>
+                    <input type="number" id="tokenPrice" step="0.01" min="0" placeholder="例如：1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="setTokenPrice()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置价格</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">提现手续费 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：5%，输入0-10之间的数字，合约中实际值为500（基于10000）</p>
+                    <input type="number" id="withdrawFee" step="0.1" min="0" max="10" placeholder="例如：5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="setWithdrawFee()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置手续费</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">每日释放率 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：1%，输入0-10之间的数字，合约中实际值为100（基于10000）</p>
+                    <input type="number" id="dailyReleaseRate" step="0.1" min="0" max="10" placeholder="例如：1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="setDailyReleaseRate()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置释放率</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 质押倍数设置 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">质押倍数设置</h2>
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">设置不同质押金额区间的倍数，默认值：</p>
+                <p class="text-sm text-gray-600">200U以上 1.5倍，500U以上 2倍，1000U以上 2.5倍，2000U以上 3倍</p>
+                <p class="text-xs text-gray-500">合约中实际值：150=1.5x, 200=2x, 250=2.5x, 300=3x</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">金额阈值 (USDT)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：200,500,1000,2000，用英文逗号分隔</p>
+                    <input type="text" id="multiplierThresholds" placeholder="例如: 200,500,1000,2000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">对应倍数</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：1.5,2,2.5,3，用英文逗号分隔，合约中实际值为150,200,250,300</p>
+                    <input type="text" id="multiplierValues" placeholder="例如: 1.5,2,2.5,3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="setMultiplierParams()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置倍数</button>
+        </div>
+
+        <!-- 资金分配设置 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">资金分配设置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">购买销毁比例 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：50%，输入0-100之间的数字，合约中实际值为5000（基于10000）</p>
+                    <input type="number" id="buyAndBurnPercent" step="1" min="0" max="100" placeholder="例如：50" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">手续费比例 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：45%，输入0-100之间的数字，合约中实际值为4500（基于10000）</p>
+                    <input type="number" id="feePercent" step="1" min="0" max="100" placeholder="例如：45" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">推荐奖励比例 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：5%，输入0-100之间的数字，合约中实际值为500（基于10000）</p>
+                    <input type="number" id="referralPercent" step="1" min="0" max="100" placeholder="例如：5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="setAllocationPercents()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置分配比例</button>
+        </div>
+
+        <!-- 团队奖励设置 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">团队奖励设置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">团队等级阈值 (USDT)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：5000,50000,200000,500000，用英文逗号分隔</p>
+                    <input type="text" id="teamThresholds" placeholder="例如: 5000,50000,200000,500000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">团队奖励比例 (%)</label>
+                    <p class="text-xs text-gray-500 mb-1">默认值：5,10,15,20，用英文逗号分隔，合约中实际值为500,1000,1500,2000（基于10000）</p>
+                    <input type="text" id="teamRewardPercents" placeholder="例如: 5,10,15,20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="setTeamRewardParams()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">设置团队奖励</button>
+        </div>
+
+        <!-- 资金管理 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">资金管理</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">提取USDT数量</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要提取的USDT数量，例如：1000</p>
+                    <input type="number" id="withdrawUSDTAmount" step="0.01" min="0" placeholder="例如：1000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="withdrawUSDT()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">提取USDT</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">提取奖励代币数量</label>
+                    <p class="text-xs text-gray-500 mb-1">输入要提取的奖励代币数量，例如：1000</p>
+                    <input type="number" id="withdrawRewardTokenAmount" step="0.01" min="0" placeholder="例如：1000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button onclick="withdrawRewardToken()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">提取奖励代币</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统信息 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">系统信息</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">合约USDT余额</p>
+                    <p id="contractUSDTBalance" class="text-lg font-semibold">-</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700">合约奖励代币余额</p>
+                    <p id="contractRewardTokenBalance" class="text-lg font-semibold">-</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700">待领取USDT总额</p>
+                    <p id="totalPendingUSDT" class="text-lg font-semibold">-</p>
+                </div>
+            </div>
+            <button onclick="refreshSystemInfo()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded">刷新信息</button>
+        </div>
+    </div>
+
+    <script>
+        let contract;
+        let signer;
+        let provider;
+        let isConnected = false;
+        let isAdmin = false;
+        let CONTRACT_ADDRESS = '0xa0c8342c1d202fd015e1D186EE6Fb01294ae287C'; // 默认合约地址
+        let currentAccount = null;
+
+        // 合约ABI
+        const CONTRACT_ABI = [
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_usdt",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_rewardToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_router",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_feeWallet",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "buyAndBurnPercent",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "feePercent",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "referralPercent",
+				"type": "uint256"
+			}
+		],
+		"name": "AllocationPercentsUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "claimTokenRewards",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "claimUSDTRewards",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "emergencyWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "oldWallet",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newWallet",
+				"type": "address"
+			}
+		],
+		"name": "FeeWalletUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "invest",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "multiplier",
+				"type": "uint256"
+			}
+		],
+		"name": "Invested",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256[]",
+				"name": "thresholds",
+				"type": "uint256[]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[]",
+				"name": "values",
+				"type": "uint256[]"
+			}
+		],
+		"name": "MultiplierParamsUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "usdtReward",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "hashRateReward",
+				"type": "uint256"
+			}
+		],
+		"name": "ReferralReward",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "usdtReward",
+				"type": "uint256"
+			}
+		],
+		"name": "ReferralRewardPaid",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			}
+		],
+		"name": "ReferrerSet",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "tokenAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "usdtAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "RewardClaimed",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address[]",
+				"name": "users_",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"name": "rewardHashRate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_buyAndBurnPercent",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_feePercent",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_referralPercent",
+				"type": "uint256"
+			}
+		],
+		"name": "setAllocationPercents",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_dailyReleaseRate",
+				"type": "uint256"
+			}
+		],
+		"name": "setDailyReleaseRate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_deadAddress",
+				"type": "address"
+			}
+		],
+		"name": "setDeadAddress",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_newFeeWallet",
+				"type": "address"
+			}
+		],
+		"name": "setFeeWallet",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_investmentMultiple",
+				"type": "uint256"
+			}
+		],
+		"name": "setInvestmentMultiple",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_minInvestment",
+				"type": "uint256"
+			}
+		],
+		"name": "setMinInvestment",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "_thresholds",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "_values",
+				"type": "uint256[]"
+			}
+		],
+		"name": "setMultiplierParams",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "status",
+				"type": "bool"
+			}
+		],
+		"name": "setOperator",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_decimals",
+				"type": "uint256"
+			}
+		],
+		"name": "setPriceDecimals",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			}
+		],
+		"name": "setReferrer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "_percents",
+				"type": "uint256[]"
+			}
+		],
+		"name": "setTeamRewardPercents",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "_thresholds",
+				"type": "uint256[]"
+			}
+		],
+		"name": "setTeamThresholds",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "newPrice",
+				"type": "uint256"
+			}
+		],
+		"name": "setTokenPrice",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "newFee",
+				"type": "uint256"
+			}
+		],
+		"name": "setWithdrawFee",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "stake",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "Staked",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "receiver",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "usdtReward",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "hashRateReward",
+				"type": "uint256"
+			}
+		],
+		"name": "TeamReward",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256[]",
+				"name": "thresholds",
+				"type": "uint256[]"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256[]",
+				"name": "rewardPercents",
+				"type": "uint256[]"
+			}
+		],
+		"name": "TeamRewardParamsUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "newPrice",
+				"type": "uint256"
+			}
+		],
+		"name": "TokenPriceUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "TokensWithdrawn",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "triggerStakingRewards",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_buyAndBurnPercent",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_feePercent",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_referralPercent",
+				"type": "uint256"
+			}
+		],
+		"name": "updateAllocationPercents",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_minInvestment",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_investmentMultiple",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_dailyReleaseRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_withdrawFee",
+				"type": "uint256"
+			}
+		],
+		"name": "updateSystemParams",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "exitAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "UserExit",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "newFee",
+				"type": "uint256"
+			}
+		],
+		"name": "WithdrawFeeUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "withdrawRewardToken",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "withdrawUSDT",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "buyAndBurnPercent",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "dailyReleaseRate",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "deadAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feePercent",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feeWallet",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getContractRewardTokenBalance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getContractUSDTBalance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "getMultiplier",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getMultiplierParams",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "thresholds",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "values",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "start",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "count",
+				"type": "uint256"
+			}
+		],
+		"name": "getRankingData",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "addresses",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "hashRates",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "teamHashRates",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getReferralInfo",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "isValid",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getSystemInfo",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "currentTokenPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalBurned",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalTeamStaked",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getTeamDetails",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "directCount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalCount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "directVolume",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "teamVolume",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "directHashRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "teamHashRate",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getTeamMemberCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getTotalHashRate",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalPendingUSDT",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getUplineInfo",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "uplines",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "levels",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "teamVolumes",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getUserInfo",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "stakedAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "hashRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "teamHashRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "pendingTokenRewards",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "pendingUSDTRewards",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "releasedPercent",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getUserRanking",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "rank",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalUsers",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "getUserRewardRecordCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "startIndex",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "count",
+				"type": "uint256"
+			}
+		],
+		"name": "getUserRewardRecords",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "timestamps",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "address[]",
+				"name": "fromAddresses",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "usdtRewards",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "hashRateRewards",
+				"type": "uint256[]"
+			},
+			{
+				"internalType": "uint8[]",
+				"name": "rewardTypes",
+				"type": "uint8[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "investmentMultiple",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "minInvestment",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "multiplierThresholds",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "multiplierValues",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "operators",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "pancakeRouter",
+		"outputs": [
+			{
+				"internalType": "contract IPancakeRouter",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "priceDecimals",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "referralPercent",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "rewardToken",
+		"outputs": [
+			{
+				"internalType": "contract IERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "stakedUsers",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "teamMembers",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "teamRewardPercents",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "teamThresholds",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "tokenPrice",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalStaked",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "usdtToken",
+		"outputs": [
+			{
+				"internalType": "contract IERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "userAddresses",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "userRewardRecords",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "usdtReward",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "hashRateReward",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "rewardType",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "users",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "stakedAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "hashRate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "claimedRewards",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalRewards",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lastUpdateTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "teamVolume",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "level",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "pendingUSDT",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalUSDT",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "exitAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "investmentTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lastAutoReleaseTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "multiplier",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "releasedPercent",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "withdrawFee",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+        // 网络ID到名称的映射
+        const NETWORK_NAMES = {
+            1: '以太坊主网',
+            3: 'Ropsten测试网',
+            4: 'Rinkeby测试网',
+            5: 'Goerli测试网',
+            42: 'Kovan测试网',
+            56: 'BSC主网',
+            97: 'BSC测试网',
+            137: 'Polygon主网',
+            80001: 'Mumbai测试网'
+        };
+
+        // 初始化页面
+        async function init() {
+            try {
+                // 检查是否安装了MetaMask
+                if (typeof window.ethereum === 'undefined') {
+                    alert('请安装MetaMask钱包！');
+                    return;
+                }
+                
+                // 初始化提供者和签名者
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                
+                // 添加事件监听器
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', handleChainChanged);
+                
+                // 尝试自动连接
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        isConnected = true; // 设置连接状态为已连接
+                        await handleAccountsChanged(accounts);
+                    }
+                } catch (error) {
+                    console.error('自动连接失败:', error);
+                }
+                
+                // 添加诊断按钮事件监听器
+                document.getElementById('diagnoseButton').addEventListener('click', diagnoseContract);
+                
+                // 更新网络信息
+                const network = await provider.getNetwork();
+                document.getElementById('currentNetwork').textContent = NETWORK_NAMES[network.chainId] || `Chain ID: ${network.chainId}`;
+                
+                // 初始化合约
+                await initContract();
+                
+                // 刷新管理员列表
+                await refreshAdminList();
+                
+                // 刷新系统信息
+                await refreshSystemInfo();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('初始化失败: ' + error.message);
+            }
+        }
+
+        // 连接钱包
+        async function connectWallet() {
+            try {
+                // 请求用户连接钱包
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                isConnected = true; // 设置连接状态为已连接
+                await handleAccountsChanged(accounts);
+            } catch (error) {
+                console.error('连接钱包失败:', error);
+                alert('连接钱包失败: ' + error.message);
+            }
+        }
+
+        // 断开钱包连接
+        function disconnectWallet() {
+            isConnected = false;
+            currentAccount = null;
+            contract = null;
+            
+            // 更新UI
+            document.getElementById('connectionStatus').textContent = '未连接';
+            document.getElementById('connectionStatus').className = 'text-red-500';
+            document.getElementById('currentAccount').textContent = '-';
+            document.getElementById('currentNetwork').textContent = '-';
+            
+            // 隐藏断开连接按钮，显示连接按钮
+            document.getElementById('connectButton').style.display = 'inline-block';
+            document.getElementById('disconnectButton').style.display = 'none';
+            
+            // 禁用所有需要钱包连接的功能
+            disableAdminFeatures();
+        }
+
+        // 处理账户变化
+        async function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                // 用户断开了所有账户
+                disconnectWallet();
+            } else {
+                // 用户切换了账户
+                currentAccount = accounts[0];
+                isConnected = true; // 确保连接状态为已连接
+                
+                // 更新UI
+                document.getElementById('connectionStatus').textContent = '已连接';
+                document.getElementById('connectionStatus').className = 'text-green-500';
+                document.getElementById('currentAccount').textContent = currentAccount;
+                
+                // 显示断开连接按钮，隐藏连接按钮
+                document.getElementById('connectButton').style.display = 'none';
+                document.getElementById('disconnectButton').style.display = 'inline-block';
+                
+                // 重新初始化合约
+                await initContract();
+                
+                // 刷新管理员列表和系统信息
+                await refreshAdminList();
+                await refreshSystemInfo();
+            }
+        }
+
+        // 处理网络变化
+        async function handleChainChanged(chainId) {
+            // 更新网络信息
+            const network = await provider.getNetwork();
+            document.getElementById('currentNetwork').textContent = NETWORK_NAMES[network.chainId] || `Chain ID: ${network.chainId}`;
+            
+            // 重新初始化合约
+            await initContract();
+            
+            // 刷新管理员列表和系统信息
+            await refreshAdminList();
+            await refreshSystemInfo();
+        }
+
+        // 更新合约地址
+        async function updateContractAddress() {
+            try {
+                const contractAddressInput = document.getElementById('contractAddress');
+                const newAddress = contractAddressInput.value.trim();
+                
+                // 验证合约地址
+                if (!ethers.utils.isAddress(newAddress)) {
+                    throw new Error('无效的合约地址');
+                }
+                
+                // 检查合约代码是否存在
+                const code = await provider.getCode(newAddress);
+                if (code === '0x' || code === '0x0') {
+                    throw new Error('该地址没有合约代码');
+                }
+                
+                // 更新合约地址
+                CONTRACT_ADDRESS = newAddress;
+                
+                // 重新初始化合约
+                const success = await initContract();
+                if (success) {
+                    alert('合约地址更新成功！');
+                }
+            } catch (error) {
+                console.error('更新合约地址失败:', error);
+                alert('更新合约地址失败: ' + error.message);
+            }
+        }
+
+        // 禁用管理员功能
+        function disableAdminFeatures() {
+            // 禁用所有需要管理员权限的按钮和输入框
+            const adminElements = document.querySelectorAll('[data-requires-admin]');
+            adminElements.forEach(element => {
+                if (element.tagName === 'BUTTON') {
+                    element.disabled = true;
+                } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                    element.disabled = true;
+                }
+            });
+        }
+
+        // 启用管理员功能
+        function enableAdminFeatures() {
+            // 启用所有需要管理员权限的按钮和输入框
+            const adminElements = document.querySelectorAll('[data-requires-admin]');
+            adminElements.forEach(element => {
+                if (element.tagName === 'BUTTON') {
+                    element.disabled = false;
+                } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                    element.disabled = false;
+                }
+            });
+        }
+
+        // 初始化合约
+        async function initContract() {
+            console.log('初始化合约 - 开始');
+            try {
+                // 获取合约地址
+                const contractAddressInput = document.getElementById('contractAddress');
+                const contractAddress = contractAddressInput.value.trim();
+                console.log('合约地址:', contractAddress);
+                
+                // 验证合约地址
+                if (!ethers.utils.isAddress(contractAddress)) {
+                    throw new Error('无效的合约地址');
+                }
+                
+                // 检查合约代码是否存在
+                const code = await provider.getCode(contractAddress);
+                if (code === '0x' || code === '0x0') {
+                    throw new Error('该地址没有合约代码');
+                }
+                
+                // 创建合约实例
+                contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
+                
+                // 更新合约地址显示
+                document.getElementById('contractAddress').value = contractAddress;
+                
+                // 检查合约所有者
+                try {
+                    const owner = await contract.owner();
+                    console.log('合约所有者:', owner);
+                } catch (error) {
+                    console.warn('无法获取合约所有者:', error);
+                }
+                
+                // 检查管理员权限
+                await checkAdminStatus();
+                
+                // 设置连接状态为已连接
+                isConnected = true;
+                
+                return true;
+            } catch (error) {
+                console.error('初始化合约失败:', error);
+                alert('初始化合约失败: ' + error.message);
+                isConnected = false;
+                return false;
+            }
+        }
+
+        // 检查管理员状态
+        async function checkAdminStatus() {
+            if (!isConnected || !contract) {
+                console.warn('未连接钱包或合约未初始化');
+                return false;
+            }
+            
+            try {
+                const currentAddress = await signer.getAddress();
+                console.log('当前地址:', currentAddress);
+                
+                // 首先检查是否为合约所有者
+                try {
+                    const owner = await contract.owner();
+                    console.log('合约所有者:', owner);
+                    
+                    if (owner.toLowerCase() === currentAddress.toLowerCase()) {
+                        console.log('当前用户是合约所有者');
+                        isAdmin = true;
+                        enableAdminFeatures();
+                        return true;
+                    }
+                } catch (error) {
+                    console.warn('获取合约所有者失败:', error);
+                }
+                
+                // 然后检查是否为管理员
+                try {
+                    // 尝试使用isAdmin函数
+                    if (typeof contract.isAdmin === 'function') {
+                        const adminStatus = await contract.isAdmin(currentAddress);
+                        console.log('isAdmin函数检查结果:', adminStatus);
+                        
+                        if (adminStatus) {
+                            console.log('当前用户是管理员');
+                            isAdmin = true;
+                            enableAdminFeatures();
+                            return true;
+                        }
+                    } else {
+                        console.warn('合约中没有isAdmin函数');
+                    }
+                    
+                    // 如果isAdmin函数不存在或返回false，尝试检查管理员列表
+                    try {
+                        const admins = await contract.getAdmins();
+                        console.log('管理员列表:', admins);
+                        
+                        const isInAdminList = admins.some(addr => addr.toLowerCase() === currentAddress.toLowerCase());
+                        console.log('当前用户是否在管理员列表中:', isInAdminList);
+                        
+                        if (isInAdminList) {
+                            console.log('当前用户在管理员列表中');
+                            isAdmin = true;
+                            enableAdminFeatures();
+                            return true;
+                        }
+                    } catch (error) {
+                        console.warn('获取管理员列表失败:', error);
+                    }
+                } catch (error) {
+                    console.warn('检查管理员权限失败:', error);
+                }
+                
+                // 如果所有检查都失败，则不是管理员
+                console.log('当前用户不是管理员');
+                isAdmin = false;
+                disableAdminFeatures();
+                return false;
+            } catch (error) {
+                console.error('检查管理员状态失败:', error);
+                isAdmin = false;
+                disableAdminFeatures();
+                return false;
+            }
+        }
+
+        // 管理员管理函数
+        async function addAdmin() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const address = document.getElementById('newAdminAddress').value;
+                if (!ethers.utils.isAddress(address)) {
+                    alert('请输入有效的钱包地址！');
+                    return;
+                }
+                
+                const tx = await contract.addAdmin(address);
+                await tx.wait();
+                alert('管理员添加成功！');
+                refreshAdminList();
+            } catch (error) {
+                alert('添加管理员失败: ' + error.message);
+            }
+        }
+
+        async function removeAdmin() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const address = document.getElementById('removeAdminAddress').value;
+                if (!ethers.utils.isAddress(address)) {
+                    alert('请输入有效的钱包地址！');
+                    return;
+                }
+                
+                const tx = await contract.removeAdmin(address);
+                await tx.wait();
+                alert('管理员移除成功！');
+                refreshAdminList();
+            } catch (error) {
+                alert('移除管理员失败: ' + error.message);
+            }
+        }
+
+        // 刷新管理员列表
+        async function refreshAdminList() {
+            if (!isConnected) {
+                document.getElementById('adminList').innerHTML = '<p class="text-gray-500">请先连接钱包</p>';
+                return;
+            }
+            
+            try {
+                const adminListElement = document.getElementById('adminList');
+                adminListElement.innerHTML = '<p class="text-gray-500">加载中...</p>';
+                
+                // 获取合约所有者
+                const owner = await contract.owner();
+                let html = '<ul class="space-y-1">';
+                html += `<li class="text-sm font-bold">合约所有者: ${owner}</li>`;
+                
+                // 获取所有操作者
+                const events = await contract.queryFilter('OperatorSet');
+                const operators = new Set();
+                
+                for (const event of events) {
+                    const operator = event.args.operator;
+                    const status = event.args.status;
+                    if (status) {
+                        operators.add(operator);
+                    }
+                }
+                
+                if (operators.size > 0) {
+                    html += '<li class="text-sm font-bold mt-2">管理员列表:</li>';
+                    for (const operator of operators) {
+                        html += `<li class="text-sm">${operator}</li>`;
+                    }
+                }
+                
+                html += '</ul>';
+                adminListElement.innerHTML = html;
+            } catch (error) {
+                console.error('刷新管理员列表失败:', error);
+                document.getElementById('adminList').innerHTML = '<p class="text-red-500">刷新管理员列表失败: ' + error.message + '</p>';
+            }
+        }
+
+        // 算力管理函数
+        async function increaseUserPower() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const addressesText = document.getElementById('userAddresses').value;
+                const powerIncrease = document.getElementById('powerIncrease').value;
+                
+                if (!addressesText.trim()) {
+                    alert('请输入用户地址！');
+                    return;
+                }
+                
+                if (!powerIncrease || isNaN(powerIncrease) || powerIncrease <= 0) {
+                    alert('请输入有效的算力增加量！');
+                    return;
+                }
+                
+                // 解析地址列表
+                const addresses = addressesText.split('\n').map(addr => addr.trim()).filter(addr => addr);
+                
+                if (addresses.length === 0) {
+                    alert('请输入有效的用户地址！');
+                    return;
+                }
+                
+                // 验证所有地址
+                for (const addr of addresses) {
+                    if (!ethers.utils.isAddress(addr)) {
+                        alert(`无效的地址: ${addr}`);
+                        return;
+                    }
+                }
+                
+                // 创建算力数组
+                const powers = new Array(addresses.length).fill(powerIncrease);
+                
+                // 调用合约的rewardHashRate函数
+                const tx = await contract.rewardHashRate(addresses, powers);
+                await tx.wait();
+                alert('批量增加算力成功！');
+            } catch (error) {
+                console.error('批量增加算力失败:', error);
+                alert('批量增加算力失败: ' + error.message);
+            }
+        }
+
+        async function queryUserPower() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const address = document.getElementById('queryUserAddress').value;
+                
+                if (!ethers.utils.isAddress(address)) {
+                    alert('请输入有效的钱包地址！');
+                    return;
+                }
+                
+                const power = await contract.getUserPower(address);
+                document.getElementById('userPower').textContent = power.toString();
+            } catch (error) {
+                console.error('查询用户算力失败:', error);
+                document.getElementById('userPower').textContent = '查询失败';
+                alert('查询用户算力失败: ' + error.message);
+            }
+        }
+
+        // 系统参数设置函数
+        async function setTokenPrice() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const price = document.getElementById('tokenPrice').value;
+                const tx = await contract.setTokenPrice(ethers.utils.parseEther(price));
+                await tx.wait();
+                alert('代币价格设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        async function setWithdrawFee() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const fee = document.getElementById('withdrawFee').value;
+                const tx = await contract.setWithdrawFee(fee * 100); // 转换为基点
+                await tx.wait();
+                alert('提现手续费设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        async function setDailyReleaseRate() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const rate = document.getElementById('dailyReleaseRate').value;
+                const tx = await contract.setDailyReleaseRate(rate * 100); // 转换为基点
+                await tx.wait();
+                alert('每日释放率设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        // 质押倍数设置
+        async function setMultiplierParams() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const thresholds = document.getElementById('multiplierThresholds').value.split(',').map(x => ethers.utils.parseEther(x.trim()));
+                const values = document.getElementById('multiplierValues').value.split(',').map(x => parseInt(x.trim()) * 100);
+                
+                const tx = await contract.setMultiplierParams(thresholds, values);
+                await tx.wait();
+                alert('质押倍数设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        // 资金分配设置
+        async function setAllocationPercents() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const buyAndBurn = document.getElementById('buyAndBurnPercent').value * 100;
+                const fee = document.getElementById('feePercent').value * 100;
+                const referral = document.getElementById('referralPercent').value * 100;
+                
+                const tx = await contract.setAllocationPercents(buyAndBurn, fee, referral);
+                await tx.wait();
+                alert('资金分配比例设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        // 团队奖励设置
+        async function setTeamRewardParams() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const thresholds = document.getElementById('teamThresholds').value.split(',').map(x => ethers.utils.parseEther(x.trim()));
+                const percents = document.getElementById('teamRewardPercents').value.split(',').map(x => parseInt(x.trim()) * 100);
+                
+                const tx = await contract.setTeamRewardParams(thresholds, percents);
+                await tx.wait();
+                alert('团队奖励设置成功！');
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+            }
+        }
+
+        // 资金管理函数
+        async function withdrawUSDT() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const amount = ethers.utils.parseEther(document.getElementById('withdrawUSDTAmount').value);
+                const tx = await contract.withdrawUSDT(amount);
+                await tx.wait();
+                alert('USDT提取成功！');
+                refreshSystemInfo();
+            } catch (error) {
+                alert('提取失败: ' + error.message);
+            }
+        }
+
+        async function withdrawRewardToken() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const amount = ethers.utils.parseEther(document.getElementById('withdrawRewardTokenAmount').value);
+                const tx = await contract.withdrawRewardToken(amount);
+                await tx.wait();
+                alert('奖励代币提取成功！');
+                refreshSystemInfo();
+            } catch (error) {
+                alert('提取失败: ' + error.message);
+            }
+        }
+
+        // 系统信息刷新
+        async function refreshSystemInfo() {
+            if (!isConnected) {
+                document.getElementById('contractUSDTBalance').textContent = '-';
+                document.getElementById('contractRewardTokenBalance').textContent = '-';
+                document.getElementById('totalPendingUSDT').textContent = '-';
+                return;
+            }
+            
+            try {
+                const usdtBalance = await contract.getContractUSDTBalance();
+                const rewardTokenBalance = await contract.getContractRewardTokenBalance();
+                const pendingUSDT = await contract.getTotalPendingUSDT();
+
+                document.getElementById('contractUSDTBalance').textContent = ethers.utils.formatEther(usdtBalance) + ' USDT';
+                document.getElementById('contractRewardTokenBalance').textContent = ethers.utils.formatEther(rewardTokenBalance) + ' TOKEN';
+                document.getElementById('totalPendingUSDT').textContent = ethers.utils.formatEther(pendingUSDT) + ' USDT';
+            } catch (error) {
+                console.error('刷新信息失败:', error);
+                document.getElementById('contractUSDTBalance').textContent = '获取失败';
+                document.getElementById('contractRewardTokenBalance').textContent = '获取失败';
+                document.getElementById('totalPendingUSDT').textContent = '获取失败';
+            }
+        }
+
+        // 页面加载时初始化
+        window.onload = function() {
+            // 添加事件监听器
+            document.getElementById('connectButton').addEventListener('click', connectWallet);
+            document.getElementById('disconnectButton').addEventListener('click', disconnectWallet);
+            document.getElementById('updateContractButton').addEventListener('click', updateContractAddress);
+            
+            // 初始化页面
+            init();
+        };
+        
+        // 添加合约诊断功能
+        async function diagnoseContract() {
+            if (!isConnected) {
+                alert('请先连接钱包！');
+                return;
+            }
+            
+            try {
+                const diagnosticResults = document.createElement('div');
+                diagnosticResults.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                diagnosticResults.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                        <h2 class="text-xl font-bold mb-4">合约诊断结果</h2>
+                        <div id="diagnosticContent" class="mb-4">
+                            <p class="text-gray-600">正在诊断合约...</p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">关闭</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(diagnosticResults);
+                
+                const diagnosticContent = document.getElementById('diagnosticContent');
+                diagnosticContent.innerHTML = '<p class="text-gray-600">正在诊断合约...</p>';
+                
+                // 检查合约地址
+                const contractAddress = CONTRACT_ADDRESS;
+                diagnosticContent.innerHTML += `<p class="mt-2"><strong>合约地址:</strong> ${contractAddress}</p>`;
+                
+                // 检查合约代码是否存在
+                try {
+                    const code = await provider.getCode(contractAddress);
+                    if (code === '0x' || code === '0x0') {
+                        diagnosticContent.innerHTML += `<p class="mt-2 text-red-500"><strong>错误:</strong> 该地址没有合约代码</p>`;
+                    } else {
+                        diagnosticContent.innerHTML += `<p class="mt-2 text-green-500"><strong>状态:</strong> 合约代码存在</p>`;
+                    }
+                } catch (error) {
+                    diagnosticContent.innerHTML += `<p class="mt-2 text-red-500"><strong>错误:</strong> 无法获取合约代码: ${error.message}</p>`;
+                }
+                
+                // 检查合约函数
+                const functionsToCheck = [
+                    { name: 'owner', description: '合约所有者' },
+                    { name: 'isAdmin', description: '管理员检查' },
+                    { name: 'getAdmins', description: '获取管理员列表' },
+                    { name: 'getContractUSDTBalance', description: '获取USDT余额' },
+                    { name: 'getContractRewardTokenBalance', description: '获取奖励代币余额' },
+                    { name: 'getTotalPendingUSDT', description: '获取待领取USDT总额' },
+                    { name: 'increaseUserPower', description: '增加用户算力' },
+                    { name: 'getUserPower', description: '获取用户算力' }
+                ];
+                
+                diagnosticContent.innerHTML += `<p class="mt-4 font-bold">合约函数检查:</p>`;
+                
+                for (const func of functionsToCheck) {
+                    try {
+                        // 检查函数是否存在于合约中
+                        if (typeof contract[func.name] === 'function') {
+                            // 尝试调用函数
+                            try {
+                                await contract[func.name]();
+                                diagnosticContent.innerHTML += `<p class="mt-1 text-green-500"><strong>${func.name}:</strong> 存在且可调用</p>`;
+                            } catch (error) {
+                                diagnosticContent.innerHTML += `<p class="mt-1 text-yellow-500"><strong>${func.name}:</strong> 存在但调用失败: ${error.message}</p>`;
+                            }
+                        } else {
+                            diagnosticContent.innerHTML += `<p class="mt-1 text-red-500"><strong>${func.name}:</strong> 不存在</p>`;
+                        }
+                    } catch (error) {
+                        diagnosticContent.innerHTML += `<p class="mt-1 text-red-500"><strong>${func.name}:</strong> 检查失败: ${error.message}</p>`;
+                    }
+                }
+                
+                // 检查当前用户权限
+                try {
+                    const currentAddress = await signer.getAddress();
+                    diagnosticContent.innerHTML += `<p class="mt-4 font-bold">当前用户权限检查:</p>`;
+                    diagnosticContent.innerHTML += `<p class="mt-1"><strong>当前地址:</strong> ${currentAddress}</p>`;
+                    
+                    // 检查是否为合约所有者
+                    try {
+                        const owner = await contract.owner();
+                        const isOwner = owner.toLowerCase() === currentAddress.toLowerCase();
+                        diagnosticContent.innerHTML += `<p class="mt-1 ${isOwner ? 'text-green-500' : 'text-red-500'}"><strong>合约所有者:</strong> ${owner} (${isOwner ? '是' : '不是'})</p>`;
+                    } catch (error) {
+                        diagnosticContent.innerHTML += `<p class="mt-1 text-yellow-500"><strong>合约所有者检查:</strong> 失败 - ${error.message}</p>`;
+                    }
+                    
+                    // 检查是否为管理员
+                    try {
+                        const isAdmin = await contract.isAdmin(currentAddress);
+                        diagnosticContent.innerHTML += `<p class="mt-1 ${isAdmin ? 'text-green-500' : 'text-red-500'}"><strong>管理员权限:</strong> ${isAdmin ? '是' : '不是'}</p>`;
+                    } catch (error) {
+                        diagnosticContent.innerHTML += `<p class="mt-1 text-yellow-500"><strong>管理员权限检查:</strong> 失败 - ${error.message}</p>`;
+                    }
+                    
+                    // 检查管理员列表
+                    try {
+                        const admins = await contract.getAdmins();
+                        const isInAdminList = admins.some(addr => addr.toLowerCase() === currentAddress.toLowerCase());
+                        diagnosticContent.innerHTML += `<p class="mt-1 ${isInAdminList ? 'text-green-500' : 'text-red-500'}"><strong>管理员列表:</strong> ${isInAdminList ? '在列表中' : '不在列表中'}</p>`;
+                        diagnosticContent.innerHTML += `<p class="mt-1 text-sm"><strong>管理员列表详情:</strong> ${admins.join(', ')}</p>`;
+                    } catch (error) {
+                        diagnosticContent.innerHTML += `<p class="mt-1 text-yellow-500"><strong>管理员列表检查:</strong> 失败 - ${error.message}</p>`;
+                    }
+                } catch (error) {
+                    diagnosticContent.innerHTML += `<p class="mt-4 text-red-500"><strong>用户权限检查失败:</strong> ${error.message}</p>`;
+                }
+                
+                // 提供修复建议
+                diagnosticContent.innerHTML += `<p class="mt-4 font-bold">可能的解决方案:</p>`;
+                diagnosticContent.innerHTML += `
+                    <ul class="list-disc pl-5 mt-2">
+                        <li>确保合约地址正确</li>
+                        <li>检查合约ABI是否与实际合约匹配</li>
+                        <li>如果某些函数不存在，可能需要更新合约或修改前端代码</li>
+                        <li>确保当前账户有足够的权限执行操作</li>
+                        <li>检查网络连接和MetaMask状态</li>
+                    </ul>
+                `;
+                
+            } catch (error) {
+                console.error('合约诊断失败:', error);
+                alert('合约诊断失败: ' + error.message);
+            }
+        }
+
+        // 当前代码只处理了4种奖励类型，但合约中有更详细的奖励类型定义
+        // 需要更新奖励类型的判断逻辑
+        function getRewardTypeName(rewardType) {
+            switch(rewardType) {
+                case 1:
+                    return '推荐奖励';
+                case 2:
+                    return '团队奖励';
+                case 3:
+                    return '质押奖励';
+                case 4:
+                    return '管理员奖励';
+                default:
+                    return '未知奖励';
+            }
+        }
+
+        // 在显示奖励记录的地方添加对类型4的处理
+        if ((type === 'directReward' && rewardType === 1) ||
+            (type === 'stakingReward' && rewardType === 2) ||
+            (type === 'teamReward' && rewardType === 3) ||
+            (type === 'adminReward' && rewardType === 4)) {
+            // 处理奖励记录
+        }
+    </script>
+</body>
+</html>
