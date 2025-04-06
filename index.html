@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>算力质押</title>
+<link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#6366f1',
+        secondary: '#818cf8'
+      },
+      borderRadius: {
+        'none': '0px',
+        'sm': '2px',
+        'DEFAULT': '4px',
+        'md': '8px',
+        'lg': '12px',
+        'xl': '16px',
+        '2xl': '20px',
+        '3xl': '24px',
+        'full': '9999px',
+        'button': '4px'
+      }
+    }
+  }
+};
+</script>
+<style>
+.reward-panel {
+    padding: 1rem;
+}
+
+.reward-panel.hidden {
+    display: none;
+}
+
+.divide-y > * + * {
+    border-top: 1px solid #e5e7eb;
+}
+</style>
+</head>
+<body class="bg-gray-50">
+<div class="w-[375px] min-h-[762px] mx-auto bg-white relative pb-[80px]">
+<nav class="fixed top-0 w-full bg-primary text-white px-4 py-4 z-50">
+<div class="flex items-center justify-between">
+<h1 class="text-lg font-medium">算力质押</h1>
+<div class="flex items-center space-x-2 max-w-[150px]">
+<span id="walletAddress" class="text-sm truncate">未连接</span>
+<i class="fas fa-copy text-sm cursor-pointer flex-shrink-0" id="copyAddressBtn"></i>
+</div>
+</div>
+</nav>
+<div class="mt-[60px] px-4">
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-gradient-to-br from-primary to-secondary p-4 rounded-lg text-white">
+<p class="text-sm opacity-80">我的算力</p>
+<p id="hashRate" class="text-2xl font-medium mt-2">0.00</p>
+<p class="text-xs mt-1">MH/s</p>
+</div>
+<div class="bg-gradient-to-br from-primary to-secondary p-4 rounded-lg text-white">
+<p class="text-sm opacity-80">质押 USDT</p>
+<p id="stakedAmount" class="text-2xl font-medium mt-2">0.00</p>
+<p class="text-xs mt-1">USDT</p>
+</div>
+</div>
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+<h2 class="text-lg font-medium mb-4">质押 USDT</h2>
+<div class="relative mb-4">
+<input type="number" id="stakeAmount" placeholder="请输入质押数量" min="200" step="100" class="w-full px-4 py-3 rounded-lg bg-gray-50 border-none text-sm">
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">USDT</span>
+</div>
+<p class="text-sm text-gray-500 mb-4">可用余额：<span id="usdtBalance">0.00</span> USDT</p>
+<button id="approveUSDTBtn" class="w-full bg-primary text-white py-3 !rounded-button font-medium mb-2">授权USDT</button>
+<button id="stakeBtn" class="w-full bg-primary text-white py-3 !rounded-button font-medium">确认质押</button>
+</div>
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+    <h2 class="text-lg font-medium mb-4">绑定上级</h2>
+    <div class="relative mb-4">
+        <input type="text" id="referrerAddress" placeholder="请输入上级地址" class="w-full px-4 py-3 rounded-lg bg-gray-50 border-none text-sm">
+    </div>
+    <button id="setReferrerBtn" class="w-full bg-primary text-white py-3 !rounded-button font-medium">确认绑定</button>
+    <button id="generateInviteBtn" class="w-full mt-3 bg-primary/10 text-primary py-3 !rounded-button font-medium flex items-center justify-center cursor-pointer hover:bg-primary/20">
+        <i class="fas fa-share-alt mr-2"></i>
+        生成邀请链接
+    </button>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-white rounded-lg shadow-sm p-4">
+<div>
+<p class="text-sm text-gray-500">可领取代币余额</p>
+<p id="pendingRewards" class="text-xl font-medium mt-1">0.00</p>
+</div>
+<button id="claimTokensBtn" class="w-full mt-3 bg-primary text-white py-2 !rounded-button">领取</button>
+</div>
+<div class="bg-white rounded-lg shadow-sm p-4">
+<div>
+<p class="text-sm text-gray-500">可领取 USDT 余额</p>
+<p id="pendingUSDT" class="text-xl font-medium mt-1">0.00</p>
+</div>
+<button id="claimUSDTBtn" class="w-full mt-3 bg-primary text-white py-2 !rounded-button">领取</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-white rounded-lg shadow-sm p-4">
+<i class="fas fa-users text-primary mb-2"></i>
+<p class="text-sm text-gray-500">团队人数</p>
+<p id="teamMemberCount" class="text-xl font-medium mt-1">0</p>
+</div>
+<div class="bg-white rounded-lg shadow-sm p-4">
+<i class="fas fa-sitemap text-primary mb-2"></i>
+<p class="text-sm text-gray-500">团队总质押</p>
+<p id="teamVolume" class="text-xl font-medium mt-1">0.00</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow-sm p-4">
+        <i class="fas fa-gift text-primary mb-2"></i>
+        <p class="text-sm text-gray-500">直推奖励算力</p>
+        <p id="referralHashRate" class="text-xl font-medium mt-1">0.00</p>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm p-4">
+        <i class="fas fa-chart-line text-primary mb-2"></i>
+        <p class="text-sm text-gray-500">直推奖励 USDT</p>
+        <p id="referralUSDT" class="text-xl font-medium mt-1">0.00</p>
+    </div>
+</div>
+<div class="bg-white rounded-lg shadow-sm mb-6">
+    <div class="p-4 border-b">
+        <h3 class="text-lg font-medium">奖励记录</h3>
+    </div>
+    
+    <!-- 奖励标签页 -->
+    <div class="flex border-b">
+        <button class="flex-1 py-3 text-gray-500 reward-tab" data-tab="directReward">
+            <i class="fas fa-users-between-lines mr-1"></i>直推奖励
+        </button>
+        <button class="flex-1 py-3 text-gray-500 reward-tab" data-tab="stakingReward">
+            <i class="fas fa-coins mr-1"></i>质押奖励
+        </button>
+        <button class="flex-1 py-3 text-gray-500 reward-tab" data-tab="teamReward">
+            <i class="fas fa-sitemap mr-1"></i>团队奖励
+        </button>
+    </div>
+    
+    <!-- 奖励面板 -->
+    <div class="reward-panels">
+        <!-- 直推奖励面板 -->
+        <div id="directReward" class="reward-panel hidden">
+            <div class="bg-blue-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-blue-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    直接推荐的下级质押获得的USDT奖励
+                </p>
+            </div>
+            <div id="directRewardList" class="divide-y"></div>
+        </div>
+        
+        <!-- 质押奖励面板 -->
+        <div id="stakingReward" class="reward-panel hidden">
+            <div class="bg-green-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-green-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    质押后获得的代币奖励记录
+                </p>
+            </div>
+            <div id="stakingRewardList" class="divide-y"></div>
+        </div>
+        
+        <!-- 团队奖励面板 -->
+        <div id="teamReward" class="reward-panel hidden">
+            <div class="bg-purple-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-purple-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    团队成员质押产生的级差USDT奖励
+                </p>
+            </div>
+            <div id="teamRewardList" class="divide-y"></div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+<div class="fixed bottom-0 w-full bg-white border-t px-4 py-2">
+<a href="#" class="flex flex-col items-center text-primary">
+<i class="fas fa-home text-xl"></i>
+<span class="text-xs mt-1">首页</span>
+</a>
+</div>
+</div>
+<script src="app.js"></script>
+
+<!-- 加载状态模板 -->
+<template id="loadingTemplate">
+    <div class="py-4 text-center text-gray-500">
+        <i class="fas fa-spinner fa-spin mr-2"></i>
+        加载中...
+    </div>
+</template>
+
+<!-- 空状态模板 -->
+<template id="emptyTemplate">
+    <div class="py-4 text-center text-gray-500">
+        暂无奖励记录
+    </div>
+</template>
+
+<!-- 错误状态模板 -->
+<template id="errorTemplate">
+    <div class="py-4 text-center text-red-500">
+        加载失败，请重试
+    </div>
+</template>
+</body>
+</html>
